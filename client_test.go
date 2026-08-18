@@ -351,3 +351,35 @@ func TestNewValidatesTheConfig(t *testing.T) {
 		t.Fatal("a map source without a project id must be rejected")
 	}
 }
+
+func TestLocaleFallsBackToTheSameLanguage(t *testing.T) {
+	server := otaServer(t, map[string]map[string]map[string]string{
+		"key-1": {
+			"de":    {"email": "E-Mail"},
+			"en_US": {"email": "Email"},
+			"ru":    {"email": "Почта"},
+		},
+	})
+	defer server.Close()
+
+	client := newTestClient(t, Config{
+		Source:  OTASource{Bundles: []OTABundle{{AccessKey: "key-1"}}},
+		BaseURL: server.URL,
+	})
+
+	// A bundle published for en_US must answer a request for en, and a bundle
+	// published for en must answer a request for en_US.
+	if got := client.Translate(OTANamespace, "email", nil, "en"); got != "Email" {
+		t.Fatalf("en -> en_US: %q", got)
+	}
+	if got := client.Translate(OTANamespace, "email", nil, "en-GB"); got != "Email" {
+		t.Fatalf("en-GB -> en_US: %q", got)
+	}
+	if got := client.Translate(OTANamespace, "email", nil, "ru_RU"); got != "Почта" {
+		t.Fatalf("ru_RU -> ru: %q", got)
+	}
+	// An unrelated language still falls back to the first locale by name.
+	if got := client.Translate(OTANamespace, "email", nil, "fr"); got != "E-Mail" {
+		t.Fatalf("fr -> de: %q", got)
+	}
+}

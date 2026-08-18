@@ -208,15 +208,11 @@ func (c *Client) lookup(namespace, key, locale string) string {
 	return key
 }
 
-// resolveLocale falls back to the first locale of the namespace, ordered by
-// name so that the choice stays stable between calls.
+// resolveLocale looks for an exact match first, then for a locale sharing the
+// same language (so that en_US reaches en and the other way round), and only
+// then falls back to the first locale of the namespace, ordered by name so that
+// the choice stays stable between calls.
 func resolveLocale(byLocale map[string]map[string]string, locale string) map[string]string {
-	if locale != "" {
-		if byKey, ok := byLocale[locale]; ok {
-			return byKey
-		}
-	}
-
 	locales := make([]string, 0, len(byLocale))
 	for name := range byLocale {
 		locales = append(locales, name)
@@ -226,7 +222,29 @@ func resolveLocale(byLocale map[string]map[string]string, locale string) map[str
 	}
 	sort.Strings(locales)
 
+	if locale != "" {
+		if byKey, ok := byLocale[locale]; ok {
+			return byKey
+		}
+
+		language := languageOf(locale)
+		for _, name := range locales {
+			if languageOf(name) == language {
+				return byLocale[name]
+			}
+		}
+	}
+
 	return byLocale[locales[0]]
+}
+
+// languageOf strips the region, turning en_US and en-US into en.
+func languageOf(locale string) string {
+	if index := strings.IndexAny(locale, "_-"); index > 0 {
+		return strings.ToLower(locale[:index])
+	}
+
+	return strings.ToLower(locale)
 }
 
 func mergeLocales(existing, incoming map[string]map[string]string) map[string]map[string]string {

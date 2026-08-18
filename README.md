@@ -66,8 +66,9 @@ itself without the `.json` suffix.
 1. The locale comes from the argument, otherwise from `Config.Locale`.
 2. The namespace is looked up; for an OTA source an unknown namespace falls back
    to `__ota__`.
-3. If the requested locale is missing, the first one in alphabetical order is
-   used, which keeps the choice stable between calls.
+3. If the requested locale is missing, a locale of the same language is used
+   (`en_US` reaches `en` and the other way round); failing that, the first
+   locale in alphabetical order, which keeps the choice stable between calls.
 4. An unknown key is returned as is, so a missing translation never leaves an
    empty string behind.
 5. Placeholders written as `{{name}}` are replaced with the values from

@@ -1,14 +1,16 @@
 # go-client
 
-Go-клиент OwnLate. Порт [`@globalart/ownlate-nestjs-translator`](https://github.com/GlobalArtInc/ownlate-nestjs-translator):
-переводы тянутся из OTA-бандла или из translations-map проекта, держатся в
-памяти, обновляются в фоне и достаются по namespace, ключу и локали.
+The Go client for OwnLate. A port of
+[`@globalart/ownlate-nestjs-translator`](https://github.com/GlobalArtInc/ownlate-nestjs-translator):
+translations are pulled from an OTA bundle or from the translations map of a
+project, kept in memory, refreshed in the background and resolved by namespace,
+key and locale.
 
 ```bash
 go get github.com/OwnLate/go-client
 ```
 
-## Быстрый старт
+## Quick start
 
 ```go
 client, err := ownlate.New(ownlate.Config{
@@ -20,20 +22,19 @@ if err != nil {
 }
 defer client.Close()
 
-client.Start(ctx) // фоновое обновление раз в 5 минут
-<-client.Ready()  // первая успешная загрузка
+client.Start(ctx) // refresh in the background every five minutes
+<-client.Ready()  // the first successful load
 
 client.T("notification.title", "en_US")
 client.Translate("emails", "greeting", map[string]any{"name": "Roman"}, "ru")
 ```
 
-Если фоновое обновление не нужно, вместо `Start` достаточно одного вызова
-`client.Load(ctx)` — он возвращает ошибку загрузки, а `Start` её логирует и
-повторяет попытку.
+If the background refresh is not needed, a single `client.Load(ctx)` replaces
+`Start`: it returns the load error, whereas `Start` logs it and retries.
 
-## Источники
+## Sources
 
-**OTA** — опубликованные бандлы по access key:
+**OTA** — published bundles addressed by access key:
 
 ```go
 ownlate.OTASource{Bundles: []ownlate.OTABundle{
@@ -42,12 +43,12 @@ ownlate.OTASource{Bundles: []ownlate.OTABundle{
 }}
 ```
 
-Бандл без `Prefix` попадает в namespace `__ota__` (константа
-`ownlate.OTANamespace`); для такого случая есть сокращение `client.T(key, locale)`.
-Несколько бандлов с одним префиксом сливаются в один namespace, последний
-выигрывает по совпадающим ключам.
+A bundle without a `Prefix` lands in the `__ota__` namespace (the
+`ownlate.OTANamespace` constant); `client.T(key, locale)` is the shorthand for
+that case. Several bundles sharing a prefix are merged into one namespace, and
+the last one wins on colliding keys.
 
-**Map** — translations-map проекта:
+**Map** — the translations map of a project:
 
 ```go
 ownlate.MapSource{
@@ -57,31 +58,32 @@ ownlate.MapSource{
 }
 ```
 
-Имя файла становится namespace: либо через `FilesMap`, либо само имя без
-`.json`.
+The file name becomes the namespace: either through `FilesMap` or as the name
+itself without the `.json` suffix.
 
-## Разрешение перевода
+## How a translation is resolved
 
-1. Локаль берётся из аргумента, иначе из `Config.Locale`.
-2. Ищется namespace; для OTA-источника неизвестный namespace откатывается на
-   `__ota__`.
-3. Если запрошенной локали нет, берётся первая по алфавиту — так выбор
-   стабилен между вызовами.
-4. Неизвестный ключ возвращается как есть, поэтому пропущенный перевод не
-   оставляет пустую строку.
-5. Плейсхолдеры вида `{{name}}` заменяются значениями из `placeholders`.
+1. The locale comes from the argument, otherwise from `Config.Locale`.
+2. The namespace is looked up; for an OTA source an unknown namespace falls back
+   to `__ota__`.
+3. If the requested locale is missing, the first one in alphabetical order is
+   used, which keeps the choice stable between calls.
+4. An unknown key is returned as is, so a missing translation never leaves an
+   empty string behind.
+5. Placeholders written as `{{name}}` are replaced with the values from
+   `placeholders`.
 
-## Настройки
+## Configuration
 
-| Поле `Config` | По умолчанию | Назначение |
+| `Config` field | Default | Purpose |
 | --- | --- | --- |
-| `Source` | — | `OTASource` или `MapSource`, обязателен |
-| `Locale` | пусто | локаль по умолчанию для `Translate` |
-| `BaseURL` | `https://api.ownlate.com/public/v1` | адрес API |
-| `PollInterval` | 5 минут | период фонового обновления |
-| `RetryInterval` | 5 секунд | пауза после неудачной загрузки |
-| `HTTPClient` | таймаут 30 секунд | HTTP-клиент |
-| `Logger` | `slog.Default()` | куда писать ошибки загрузки |
+| `Source` | — | `OTASource` or `MapSource`, required |
+| `Locale` | empty | the locale `Translate` uses when the call site passes none |
+| `BaseURL` | `https://api.ownlate.com/public/v1` | API address |
+| `PollInterval` | 5 minutes | background refresh period |
+| `RetryInterval` | 5 seconds | pause after a failed load |
+| `HTTPClient` | 30 second timeout | HTTP client |
+| `Logger` | `slog.Default()` | where load failures are reported |
 
-Клиент безопасен для конкурентного использования: `Translate` читает снимок
-переводов под RWMutex, обновление заменяет его целиком.
+The client is safe for concurrent use: `Translate` reads a snapshot under an
+RWMutex and a refresh replaces that snapshot as a whole.

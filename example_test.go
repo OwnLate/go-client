@@ -10,7 +10,7 @@ import (
 func ExampleClient() {
 	client, err := ownlate.New(ownlate.Config{
 		Source: ownlate.OTASource{Bundles: []ownlate.OTABundle{
-			{AccessKey: "06a1beee8c794ff99443bb9da888bc84ccc5c4b000a1427da6f9f9f17569f12e"},
+			{AccessKey: "ownlate-ota-access-key"},
 		}},
 		Locale: "ru",
 	})
